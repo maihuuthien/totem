@@ -1,7 +1,7 @@
 [project]
-name = "agents"
+name = "totem"
 version = "0.1.0"
-description = "Add your description here"
+description = "A proxy chatbot to answer professional and personal questions about myself"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
