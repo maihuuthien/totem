@@ -1,6 +1,6 @@
 # Totem
 
-A proxy chatbot to answer professional and personal questions about yourself using AI. This application creates an interactive chat interface powered by OpenAI (or local LLM) that can answer questions about your background, career, and experience based on your LinkedIn profile and personal summary.
+A proxy chatbot to answer professional and personal questions about yourself using AI. This application creates an interactive chat interface powered by OpenAI (or local LLM) that can answer questions about your background, career, and experience based on your LinkedIn profile and personal summary. See demo [here](https://huggingface.co/spaces/maihuuthien/totem).
 
 ## Features
 
