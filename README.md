@@ -166,21 +166,9 @@ PUSHOVER_TOKEN=your-pushover-app-token
 
 ## Running Locally
 
-### Option A: With OpenAI API
+### Option A: With Local Ollama (Windows Host)
 
-1. Ensure your `.env` has `OPENAI_API_KEY` set
-2. Make sure `USE_LOCAL_LLM` is NOT set or is set to `0`
-3. Run the application:
-   ```bash
-   cd app
-   uv run gradio app.py
-   ```
-
-4. Open your browser to the URL shown (typically `http://127.0.0.1:7860`)
-
-### Option B: With Local Ollama (Windows Host)
-
-This setup allows your Ubuntu VM to use Ollama running on your Windows host machine.
+This setup allows your Ubuntu VM to use Ollama running on your Windows host machine. This option is perfect for testing locally before deploying, without spending a dime on a commercial LLM API.
 
 #### On Windows Host:
 
@@ -227,6 +215,18 @@ This setup allows your Ubuntu VM to use Ollama running on your Windows host mach
 4. Open your browser to `http://127.0.0.1:7860`
 
 **Note:** The application uses `10.0.2.2` as the host IP, which is VirtualBox's default gateway when using NAT. If you're using a different network mode (Bridged, Host-only), you'll need to update the IP in `app.py`.
+
+### Option B: With OpenAI API
+
+1. Ensure your `.env` has `OPENAI_API_KEY` set
+2. Make sure `USE_LOCAL_LLM` is NOT set or is set to `0`
+3. Run the application:
+   ```bash
+   cd app
+   uv run gradio app.py
+   ```
+
+4. Open your browser to the URL shown (typically `http://127.0.0.1:7860`)
 
 ## Deploying to HuggingFace Spaces
 
