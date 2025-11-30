@@ -172,7 +172,7 @@ PUSHOVER_TOKEN=your-pushover-app-token
 2. Make sure `USE_LOCAL_LLM` is NOT set or is set to `0`
 3. Run the application:
    ```bash
-   cd ./app/
+   cd app
    uv run gradio app.py
    ```
 
