@@ -3,6 +3,7 @@ from openai import OpenAI
 import json
 import os
 import requests
+import httpx
 from pypdf import PdfReader
 import gradio as gr
 
@@ -76,7 +77,18 @@ tools = [{"type": "function", "function": record_user_details_json},
 class Me:
 
     def __init__(self):
-        self.openai = OpenAI()
+        if os.getenv("USE_LOCAL_LLM", 0):
+            self.openai = OpenAI(
+                base_url='http://10.0.2.2:11434/v1', api_key='ollama',
+                http_client=httpx.Client(
+                    transport=httpx.HTTPTransport(local_address="0.0.0.0"),
+                )
+            )
+            self.model_name = "llama3.2"
+        else:
+            self.openai = OpenAI()
+            self.model_name = "gpt-4o-mini"
+
         self.name = "Thien Mai"
         reader = PdfReader("me/linkedin.pdf")
         self.linkedin = ""
@@ -113,22 +125,27 @@ If the user is engaging in discussion, try to steer them towards getting in touc
         return system_prompt
     
     def chat(self, message, history):
-        messages = [{"role": "system", "content": self.system_prompt()}] + history + [{"role": "user", "content": message}]
-        done = False
-        while not done:
-            response = self.openai.chat.completions.create(model="gpt-4o-mini", messages=messages, tools=tools)
-            if response.choices[0].finish_reason=="tool_calls":
-                message = response.choices[0].message
-                tool_calls = message.tool_calls
-                results = self.handle_tool_call(tool_calls)
-                messages.append(message)
-                messages.extend(results)
-            else:
-                done = True
+        messages = [
+            {"role": "system", "content": self.system_prompt()}
+        ] + history + [
+            {"role": "user", "content": message}
+        ]
+        while True:
+            response = self.openai.chat.completions.create(
+                model=self.model_name, messages=messages, tools=tools
+            )
+            if response.choices[0].finish_reason != "tool_calls":
+                break
+
+            message = response.choices[0].message
+            tool_calls = message.tool_calls
+            results = self.handle_tool_call(tool_calls)
+            messages.append(message)
+            messages.extend(results)
+
         return response.choices[0].message.content
     
 
 if __name__ == "__main__":
     me = Me()
     gr.ChatInterface(me.chat, type="messages").launch()
-    
