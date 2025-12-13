@@ -169,7 +169,7 @@ If the user is engaging in discussion, try to steer them towards getting in touc
                     input=text,
                     response_format="wav",
                 ) as response:
-                    response.stream_to_file(tmp)
+                    response.stream_to_file(tmp.name)
 
                 return tmp.name
 
