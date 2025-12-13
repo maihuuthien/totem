@@ -87,7 +87,7 @@ class Me:
     """Class representing myself with chat and TTS capabilities"""
 
     def __init__(self):
-        if os.getenv("USE_LOCAL_LLM", '0'):
+        if int(os.getenv("USE_LOCAL_LLM", '0')):
             self.openai = OpenAI(
                 base_url='http://10.0.2.2:11434/v1', api_key='ollama',
                 http_client=httpx.Client(
@@ -180,7 +180,11 @@ if __name__ == "__main__":
     with gr.Blocks(title="Totem Chat + TTS") as demo:
         gr.Markdown("# Chat with Thien Mai\nPlay the last answer as audio.")
 
-        chatbot = gr.Chatbot(type="messages")
+        try:
+            chatbot = gr.Chatbot(type="messages")
+        except TypeError:
+            chatbot = gr.Chatbot()
+
         with gr.Row():
             txt = gr.Textbox(placeholder="Type your message and press Enter")
             play_btn = gr.Button("Play last answer")
