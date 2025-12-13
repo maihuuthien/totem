@@ -158,20 +158,24 @@ If the user is engaging in discussion, try to steer them towards getting in touc
 
         return response.choices[0].message.content
 
-    def text_to_speech_streaming(self, text):
-        """Convert text to speech using OpenAI's TTS API"""
+    def text_to_speech(self, text):
+        """Convert text to speech, write to a temp WAV file, and return its path"""
+        import tempfile
         try:
-            with self.openai.audio.speech.with_streaming_response.create(
-                model="tts-1",
-                voice="fable",  # Male options: echo, fable, onyx
-                input=text,
-                response_format="wav",
-            ) as response:
-                # Iterate over the byte chunks of the audio stream
-                yield from response.iter_bytes(chunk_size=4096)
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+                with self.openai.audio.speech.with_streaming_response.create(
+                    model="tts-1",
+                    voice="fable",
+                    input=text,
+                    response_format="wav",
+                ) as response:
+                    response.stream_to_file(tmp)
+
+                return tmp.name
 
         except Exception as e:  # pylint: disable=broad-except
             print(f"TTS Error: {e}", flush=True)
+            return None
 
 
 if __name__ == "__main__":
@@ -188,7 +192,7 @@ if __name__ == "__main__":
         with gr.Row():
             txt = gr.Textbox(placeholder="Type your message and press Enter")
             play_btn = gr.Button("Play last answer")
-        audio_out = gr.Audio(autoplay=True)
+        audio_out = gr.Audio(autoplay=True, type="filepath")
         last_answer = gr.State("")
 
         def respond(user_message, history):
@@ -201,13 +205,7 @@ if __name__ == "__main__":
             ]
             return history, "", assistant_reply
 
-        def play_last(answer_text):
-            """Generate TTS audio for the last answer text"""
-            if not answer_text:
-                return None
-            return me.text_to_speech_streaming(answer_text)
-
         txt.submit(respond, inputs=[txt, chatbot], outputs=[chatbot, txt, last_answer])
-        play_btn.click(play_last, inputs=[last_answer], outputs=[audio_out])
+        play_btn.click(me.text_to_speech, inputs=[last_answer], outputs=[audio_out])
 
     demo.launch()
