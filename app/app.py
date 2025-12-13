@@ -1,9 +1,14 @@
-from dotenv import load_dotenv
-from openai import OpenAI
+"""Main application code for the Totem Chat + TTS app"""
+
 import json
 import os
+
+from dotenv import load_dotenv
+from openai import OpenAI
+
 import requests
 import httpx
+
 from pypdf import PdfReader
 import gradio as gr
 
@@ -11,21 +16,25 @@ import gradio as gr
 load_dotenv(override=True)
 
 def push(text):
+    """Send a push notification using Pushover"""
     requests.post(
         "https://api.pushover.net/1/messages.json",
         data={
             "token": os.getenv("PUSHOVER_TOKEN"),
             "user": os.getenv("PUSHOVER_USER"),
             "message": text,
-        }
+        },
+        timeout=5,
     )
 
 
 def record_user_details(email, name="Name not provided", notes="not provided"):
+    """Record user details for follow-up"""
     push(f"Recording {name} with email {email} and notes {notes}")
     return {"recorded": "ok"}
 
 def record_unknown_question(question):
+    """Record a question that couldn't be answered"""
     push(f"Recording {question}")
     return {"recorded": "ok"}
 
@@ -75,9 +84,10 @@ tools = [{"type": "function", "function": record_user_details_json},
 
 
 class Me:
+    """Class representing myself with chat and TTS capabilities"""
 
     def __init__(self):
-        if os.getenv("USE_LOCAL_LLM", 0):
+        if int(os.getenv("USE_LOCAL_LLM", '0')):
             self.openai = OpenAI(
                 base_url='http://10.0.2.2:11434/v1', api_key='ollama',
                 http_client=httpx.Client(
@@ -101,6 +111,7 @@ class Me:
 
 
     def handle_tool_call(self, tool_calls):
+        """Handle tool calls from the assistant"""
         results = []
         for tool_call in tool_calls:
             tool_name = tool_call.function.name
@@ -110,8 +121,9 @@ class Me:
             result = tool(**arguments) if tool else {}
             results.append({"role": "tool","content": json.dumps(result),"tool_call_id": tool_call.id})
         return results
-    
+
     def system_prompt(self):
+        """Generate system prompt with personal context"""
         system_prompt = f"You are acting as {self.name}. You are answering questions on {self.name}'s website, \
 particularly questions related to {self.name}'s career, background, skills and experience. \
 Your responsibility is to represent {self.name} for interactions on the website as faithfully as possible. \
@@ -123,8 +135,9 @@ If the user is engaging in discussion, try to steer them towards getting in touc
         system_prompt += f"\n\n## Summary:\n{self.summary}\n\n## LinkedIn Profile:\n{self.linkedin}\n\n"
         system_prompt += f"With this context, please chat with the user, always staying in character as {self.name}."
         return system_prompt
-    
+
     def chat(self, message, history):
+        """Generate assistant response based on user message and chat history"""
         messages = [
             {"role": "system", "content": self.system_prompt()}
         ] + history + [
@@ -144,11 +157,55 @@ If the user is engaging in discussion, try to steer them towards getting in touc
             messages.extend(results)
 
         return response.choices[0].message.content
-    
+
+    def text_to_speech(self, text):
+        """Convert text to speech, write to a temp WAV file, and return its path"""
+        import tempfile
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+                with self.openai.audio.speech.with_streaming_response.create(
+                    model="tts-1",
+                    voice="fable",
+                    input=text,
+                    response_format="wav",
+                ) as response:
+                    response.stream_to_file(tmp.name)
+
+                return tmp.name
+
+        except Exception as e:  # pylint: disable=broad-except
+            print(f"TTS Error: {e}", flush=True)
+            return None
+
 
 if __name__ == "__main__":
     me = Me()
-    try:
-        gr.ChatInterface(me.chat, type="messages").launch()
-    except TypeError:
-        gr.ChatInterface(me.chat).launch()
+
+    with gr.Blocks(title="Totem Chat + TTS") as demo:
+        gr.Markdown("# Chat with Thien Mai\nPlay the last answer as audio.")
+
+        try:
+            chatbot = gr.Chatbot(type="messages")
+        except TypeError:
+            chatbot = gr.Chatbot()
+
+        with gr.Row():
+            txt = gr.Textbox(placeholder="Type your message and press Enter")
+            play_btn = gr.Button("Play last answer")
+        audio_out = gr.Audio(autoplay=True, type="filepath")
+        last_answer = gr.State("")
+
+        def respond(user_message, history):
+            """Generate assistant response and update chat history"""
+            assistant_reply = me.chat(user_message, history or [])
+            # Update chat history
+            history = (history or []) + [
+                {"role": "user", "content": user_message},
+                {"role": "assistant", "content": assistant_reply}
+            ]
+            return history, "", assistant_reply
+
+        txt.submit(respond, inputs=[txt, chatbot], outputs=[chatbot, txt, last_answer])
+        play_btn.click(me.text_to_speech, inputs=[last_answer], outputs=[audio_out])
+
+    demo.launch()
