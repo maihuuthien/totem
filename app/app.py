@@ -5,6 +5,7 @@ import os
 
 from dotenv import load_dotenv
 from openai import OpenAI
+from elevenlabs.client import ElevenLabs
 
 import requests
 import httpx
@@ -99,6 +100,10 @@ class Me:
             self.openai = OpenAI()
             self.model_name = "gpt-4o-mini"
 
+        self.elevenlabs = ElevenLabs(
+            api_key=os.getenv("ELEVENLABS_API_KEY"),
+        )
+
         self.name = "Thien Mai"
         reader = PdfReader("me/linkedin.pdf")
         self.linkedin = ""
@@ -161,28 +166,46 @@ If the user is engaging in discussion, try to steer them towards getting in touc
     def text_to_speech(self, text):
         """Convert text to speech, write to a temp WAV file, and return its path"""
         import tempfile
-        try:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-                with self.openai.audio.speech.with_streaming_response.create(
-                    model="tts-1",
-                    voice="fable",
-                    input=text,
-                    response_format="wav",
-                ) as response:
-                    response.stream_to_file(tmp.name)
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+            try:
+                response = self.elevenlabs.text_to_speech.convert(
+                    text=text,
+                    voice_id="qmxgBbdAMUaeqxhigcfH",
+                    model_id="eleven_turbo_v2_5",
+                    output_format="mp3_44100_128",
+                )
+                with open(tmp.name, "wb") as f:
+                    for chunk in response:
+                        if chunk:
+                            f.write(chunk)
 
                 return tmp.name
 
-        except Exception as e:  # pylint: disable=broad-except
-            print(f"TTS Error: {e}", flush=True)
-            return None
+            except Exception as e:  # pylint: disable=broad-except
+                print(f"ElevenLabs Error: {e}.\nFallback to OpenAI text-to-speech", flush=True)
+                try:
+                    with self.openai.audio.speech.with_streaming_response.create(
+                        model="tts-1",
+                        voice="fable",
+                        input=text,
+                        response_format="mp3",
+                    ) as response:
+                        response.stream_to_file(tmp.name)
+
+                    return tmp.name
+
+                except Exception as e:  # pylint: disable=broad-except
+                    print(f"OpenAI Error: {e}", flush=True)
+    
+        return None
 
 
 if __name__ == "__main__":
     me = Me()
 
     with gr.Blocks(title="Totem Chat + TTS") as demo:
-        gr.Markdown("# Chat with Thien Mai\nPlay the last answer as audio.")
+        gr.Markdown("# Chat with Thien Mai\nPlay the last answer with my voice clone.")
 
         try:
             chatbot = gr.Chatbot(type="messages")
