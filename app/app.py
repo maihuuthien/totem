@@ -1,6 +1,7 @@
 """Main application code for the Totem Chat + TTS app"""
 
 import json
+import sys
 import os
 
 from dotenv import load_dotenv
@@ -12,6 +13,19 @@ import httpx
 
 from pypdf import PdfReader
 import gradio as gr
+
+# Monkey patch
+from huggingface_hub import hf_hub_download
+import huggingface_hub
+def cached_download(*args, **kwargs):
+    return hf_hub_download(*args, **kwargs)
+huggingface_hub.cached_download = cached_download
+
+os.environ["TOTEM_APP_DIR"] = os.path.dirname(os.path.abspath(__file__))
+os.environ["LATENTSYNC_DIR"] = os.path.join(os.environ["TOTEM_APP_DIR"], "LatentSync/")
+sys.path.append(os.environ["LATENTSYNC_DIR"])
+from LatentSync.scripts.inference import prepare_pipeline
+from omegaconf import OmegaConf
 
 
 load_dotenv(override=True)
@@ -103,6 +117,31 @@ class Me:
         self.elevenlabs = ElevenLabs(
             api_key=os.getenv("ELEVENLABS_API_KEY"),
         )
+
+        self.unet_config = OmegaConf.load(os.path.join(
+            os.environ["LATENTSYNC_DIR"], "configs/unet/second_stage.yaml"
+        ))
+        self.pipeline, self.weight_dtype = prepare_pipeline(
+            unet_config=self.unet_config,
+            inference_ckpt_path=os.path.join(
+                os.environ["LATENTSYNC_DIR"], "checkpoints/latentsync_unet.pt"
+            ),
+        )
+
+        # # NOTE: For testing purpose only
+        # video_out_path="/home/mai4hc/projects/totem/app/video_out.mp4"
+        # self.pipeline(
+        #     video_path="/home/mai4hc/projects/totem/app/me/ref_video.mp4",
+        #     audio_path="/home/mai4hc/projects/totem/app/me/ref_audio.mp3",
+        #     video_out_path=video_out_path,
+        #     video_mask_path=video_out_path.replace(".mp4", "_mask.mp4"),
+        #     num_frames=self.unet_config.data.num_frames,
+        #     num_inference_steps=20,
+        #     guidance_scale=1.5,
+        #     weight_dtype=self.weight_dtype,
+        #     width=self.unet_config.data.resolution,
+        #     height=self.unet_config.data.resolution,
+        # )
 
         self.name = "Thien Mai"
         reader = PdfReader("me/linkedin.pdf")

@@ -489,7 +489,9 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
 
     def load_state_dict(self, state_dict, strict=True):
         # If the loaded checkpoint's in_channels or out_channels are different from config
-        temp_state_dict = copy.deepcopy(state_dict)
+        # NOTE: Unknown error with deepcopy, use shallow copy instead
+        # temp_state_dict = copy.deepcopy(state_dict)
+        temp_state_dict = copy.copy(state_dict)
         if temp_state_dict["conv_in.weight"].shape[1] != self.config.in_channels:
             del temp_state_dict["conv_in.weight"]
             del temp_state_dict["conv_in.bias"]

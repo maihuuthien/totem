@@ -322,7 +322,10 @@ class LipsyncPipeline(DiffusionPipeline):
         # 0. Define call parameters
         batch_size = 1
         device = self._execution_device
-        self.image_processor = ImageProcessor(height, mask=mask, device="cuda")
+        self.image_processor = ImageProcessor(
+            height, mask=mask,
+            device="cuda" if torch.cuda.is_available() else "cpu",
+        )
         self.set_progress_bar_config(desc=f"Sample frames: {num_frames}")
 
         faces, original_video_frames, boxes, affine_matrices = self.affine_transform_video(video_path)
