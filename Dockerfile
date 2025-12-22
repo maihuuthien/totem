@@ -29,7 +29,8 @@ RUN apt-get update && \
         libglib2.0-0 \
         libsm6 \
         libxrender1 \
-        libxext6 && \
+        libxext6 \
+        curl && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy only project metadata first to leverage Docker layer caching for deps
@@ -42,6 +43,11 @@ RUN uv sync --no-dev
 
 # Copy the rest of the application source
 COPY . .
+
+# Download required checkpoints from HuggingFace
+RUN mkdir -p checkpoints/whisper && \
+    curl -L --fail -o checkpoints/latentsync_unet.pt "https://huggingface.co/ByteDance/LatentSync/resolve/main/latentsync_unet.pt" && \
+    curl -L --fail -o checkpoints/whisper/tiny.pt "https://huggingface.co/ByteDance/LatentSync/resolve/main/whisper/tiny.pt"
 
 # Expose Gradio default port
 EXPOSE 7860
