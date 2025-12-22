@@ -129,18 +129,24 @@ class Me:
         )
 
         # # NOTE: For testing purpose only
-        # video_out_path="/home/mai4hc/projects/totem/app/video_out.mp4"
+        # video_out_path = os.path.join(
+        #     os.environ["TOTEM_APP_DIR"], "out_video.mp4"
+        # )
         # self.pipeline(
-        #     video_path="/home/mai4hc/projects/totem/app/me/ref_video.mp4",
-        #     audio_path="/home/mai4hc/projects/totem/app/me/ref_audio.mp3",
+        #     video_path=os.path.join(
+        #         os.environ["TOTEM_APP_DIR"], "me/ref_video.mp4"
+        #     ),
+        #     audio_path=os.path.join(
+        #         os.environ["TOTEM_APP_DIR"], "me/ref_audio.mp3"
+        #     ),
         #     video_out_path=video_out_path,
         #     video_mask_path=video_out_path.replace(".mp4", "_mask.mp4"),
         #     num_frames=self.unet_config.data.num_frames,
-        #     num_inference_steps=20,
+        #     num_inference_steps=20//2,
         #     guidance_scale=1.5,
         #     weight_dtype=self.weight_dtype,
-        #     width=self.unet_config.data.resolution,
-        #     height=self.unet_config.data.resolution,
+        #     width=self.unet_config.data.resolution//2,
+        #     height=self.unet_config.data.resolution//2,
         # )
 
         self.name = "Thien Mai"

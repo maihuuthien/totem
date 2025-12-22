@@ -24,7 +24,11 @@ from accelerate.utils import set_seed
 from latentsync.whisper.audio2feature import Audio2Feature
 
 
-def prepare_pipeline(unet_config, inference_ckpt_path, seed=1247):
+def prepare_pipeline(
+    unet_config, inference_ckpt_path,
+    autoencoder_kl_model="stabilityai/sd-vae-ft-mse",
+    seed=1247,
+):
 
     # Check if the GPU supports float16
     is_fp16_supported = torch.cuda.is_available() and torch.cuda.get_device_capability()[0] > 7
@@ -51,7 +55,7 @@ def prepare_pipeline(unet_config, inference_ckpt_path, seed=1247):
         num_frames=unet_config.data.num_frames
     )
 
-    vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-mse", torch_dtype=dtype)
+    vae = AutoencoderKL.from_pretrained(autoencoder_kl_model, torch_dtype=dtype)
     vae.config.scaling_factor = 0.18215
     vae.config.shift_factor = 0
 
