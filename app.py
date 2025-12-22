@@ -19,14 +19,17 @@ import gradio as gr
 from huggingface_hub import hf_hub_download
 import huggingface_hub
 def cached_download(*args, **kwargs):
+    """A simple wrapper around hf_hub_download to monkey patch cached_download"""
     return hf_hub_download(*args, **kwargs)
 huggingface_hub.cached_download = cached_download
 
+# Set up environment variables and paths
 os.environ["TOTEM_APP_DIR"] = os.path.dirname(os.path.abspath(__file__))
 os.environ["LATENTSYNC_DIR"] = os.path.join(os.environ["TOTEM_APP_DIR"], "LatentSync/")
 sys.path.append(os.environ["LATENTSYNC_DIR"])
-from LatentSync.scripts.inference import prepare_pipeline
-from omegaconf import OmegaConf
+
+from omegaconf import OmegaConf  # pylint: disable=wrong-import-position
+from LatentSync.scripts.inference import prepare_pipeline  # pylint: disable=wrong-import-position
 
 
 load_dotenv(override=True)
@@ -239,9 +242,9 @@ If the user is engaging in discussion, try to steer them towards getting in touc
 
                     return tmp.name
 
-                except Exception as e:  # pylint: disable=broad-except
-                    print(f"OpenAI Error: {e}", flush=True)
-    
+                except Exception as exc:  # pylint: disable=broad-except
+                    print(f"OpenAI Error: {exc}", flush=True)
+
         return None
 
     def text_to_video(self, text):
