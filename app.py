@@ -5,6 +5,7 @@ import sys
 import os
 import tempfile
 
+
 from dotenv import load_dotenv
 from openai import OpenAI
 from elevenlabs.client import ElevenLabs
@@ -14,6 +15,7 @@ import httpx
 
 from pypdf import PdfReader
 import gradio as gr
+import spaces
 
 # Monkey patch
 from huggingface_hub import hf_hub_download
@@ -26,8 +28,10 @@ huggingface_hub.cached_download = cached_download
 # Set up environment variables and paths
 os.environ["TOTEM_APP_DIR"] = os.path.dirname(os.path.abspath(__file__))
 os.environ["LATENTSYNC_DIR"] = os.path.join(os.environ["TOTEM_APP_DIR"], "LatentSync/")
-os.environ["CHECKPOINTS_DIR"] = os.path.join(os.environ["LATENTSYNC_DIR"], "checkpoints/")
 sys.path.append(os.environ["LATENTSYNC_DIR"])
+
+os.environ["CHECKPOINTS_DIR"] = os.path.join(os.environ["LATENTSYNC_DIR"], "checkpoints/")
+os.makedirs(os.environ["CHECKPOINTS_DIR"], exist_ok=True)
 
 from omegaconf import OmegaConf  # pylint: disable=wrong-import-position
 from LatentSync.scripts.inference import prepare_pipeline  # pylint: disable=wrong-import-position
@@ -107,6 +111,7 @@ class Me:
     """Class representing myself with chat and TTS capabilities"""
 
     def __init__(self):
+        print("Initializing OpenAI client...", flush=True)
         if int(os.getenv("USE_LOCAL_LLM", '0')):
             self.openai = OpenAI(
                 base_url='http://10.0.2.2:11434/v1', api_key='ollama',
@@ -119,28 +124,44 @@ class Me:
             self.openai = OpenAI()
             self.model_name = "gpt-4o-mini"
 
-        # Initialize ElevenLabs TTS for text-to-speech
+        print("Initializing ElevenLabs client...", flush=True)
         self.elevenlabs = ElevenLabs(
             api_key=os.getenv("ELEVENLABS_API_KEY"),
         )
 
+        self.init_latentsync()
+
+        print("Loading personal context from files...", flush=True)
+        self.name = "Thien Mai"
+        reader = PdfReader("me/linkedin.pdf")
+        self.linkedin = ""
+        for page in reader.pages:
+            text = page.extract_text()
+            if text:
+                self.linkedin += text
+        with open("me/summary.txt", "r", encoding="utf-8") as f:
+            self.summary = f.read()
+
+    @spaces.GPU()
+    def init_latentsync(self):
+        """Initialize LatentSync pipeline for text-to-video synthesis"""
+
         if not int(os.getenv("USE_DOCKER_SDK", '0')):
-            # Download checkpoints for lipsync model
-            os.makedirs(os.path.join(os.environ["CHECKPOINTS_DIR"], "whisper/"), exist_ok=True)
+            print("Downloading LatentSync checkpoints...", flush=True)
             hf_hub_download(
                 repo_id="ByteDance/LatentSync",
                 filename="whisper/tiny.pt",
-                cache_dir=os.path.join(os.environ["CHECKPOINTS_DIR"], "whisper/"),
+                local_dir=os.environ["CHECKPOINTS_DIR"],
                 force_download=False,
             )
             hf_hub_download(
                 repo_id="ByteDance/LatentSync",
                 filename="latentsync_unet.pt",
-                cache_dir=os.environ["CHECKPOINTS_DIR"],
+                local_dir=os.environ["CHECKPOINTS_DIR"],
                 force_download=False,
             )
 
-        # Prepare LatentSync pipeline
+        print("Preparing LatentSync pipeline...", flush=True)
         self.unet_config = OmegaConf.load(os.path.join(
             os.environ["LATENTSYNC_DIR"], "configs/unet/second_stage.yaml"
         ))
@@ -171,18 +192,6 @@ class Me:
         #     width=self.unet_config.data.resolution//2,
         #     height=self.unet_config.data.resolution//2,
         # )
-
-        # Load personal context from files
-        self.name = "Thien Mai"
-        reader = PdfReader("me/linkedin.pdf")
-        self.linkedin = ""
-        for page in reader.pages:
-            text = page.extract_text()
-            if text:
-                self.linkedin += text
-        with open("me/summary.txt", "r", encoding="utf-8") as f:
-            self.summary = f.read()
-
 
     def handle_tool_call(self, tool_calls):
         """Handle tool calls from the assistant"""
@@ -267,6 +276,7 @@ If the user is engaging in discussion, try to steer them towards getting in touc
 
         return None
 
+    @spaces.GPU()
     def text_to_video(self, text):
         """Convert text to video, write to a temp MP4 file, and return its path"""
         audio_path = self.text_to_speech(text)

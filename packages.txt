@@ -1,8 +1,5 @@
-libllvm-10-ocaml-dev
-libllvm10
-llvm-10
-llvm-10-dev
-llvm-10-doc
-llvm-10-examples
-llvm-10-runtime
+libllvm-ocaml-dev
+llvm
+llvm-dev
+llvm-runtime
 ffmpeg
