@@ -26,6 +26,7 @@ huggingface_hub.cached_download = cached_download
 # Set up environment variables and paths
 os.environ["TOTEM_APP_DIR"] = os.path.dirname(os.path.abspath(__file__))
 os.environ["LATENTSYNC_DIR"] = os.path.join(os.environ["TOTEM_APP_DIR"], "LatentSync/")
+os.environ["CHECKPOINTS_DIR"] = os.path.join(os.environ["LATENTSYNC_DIR"], "checkpoints/")
 sys.path.append(os.environ["LATENTSYNC_DIR"])
 
 from omegaconf import OmegaConf  # pylint: disable=wrong-import-position
@@ -118,10 +119,28 @@ class Me:
             self.openai = OpenAI()
             self.model_name = "gpt-4o-mini"
 
+        # Initialize ElevenLabs TTS for text-to-speech
         self.elevenlabs = ElevenLabs(
             api_key=os.getenv("ELEVENLABS_API_KEY"),
         )
 
+        if not int(os.getenv("USE_DOCKER_SDK", '0')):
+            # Download checkpoints for lipsync model
+            os.makedirs(os.path.join(os.environ["CHECKPOINTS_DIR"], "whisper/"), exist_ok=True)
+            hf_hub_download(
+                repo_id="ByteDance/LatentSync",
+                filename="whisper/tiny.pt",
+                cache_dir=os.path.join(os.environ["CHECKPOINTS_DIR"], "whisper/"),
+                force_download=False,
+            )
+            hf_hub_download(
+                repo_id="ByteDance/LatentSync",
+                filename="latentsync_unet.pt",
+                cache_dir=os.environ["CHECKPOINTS_DIR"],
+                force_download=False,
+            )
+
+        # Prepare LatentSync pipeline
         self.unet_config = OmegaConf.load(os.path.join(
             os.environ["LATENTSYNC_DIR"], "configs/unet/second_stage.yaml"
         ))
@@ -153,6 +172,7 @@ class Me:
         #     height=self.unet_config.data.resolution//2,
         # )
 
+        # Load personal context from files
         self.name = "Thien Mai"
         reader = PdfReader("me/linkedin.pdf")
         self.linkedin = ""

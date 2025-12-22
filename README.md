@@ -1,7 +1,7 @@
 ---
 title: totem
 app_file: app.py
-sdk: docker
+sdk: gradio
 sdk_version: 5.49.1
 ---
 
