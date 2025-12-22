@@ -3,6 +3,7 @@
 import json
 import sys
 import os
+import tempfile
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -209,9 +210,7 @@ If the user is engaging in discussion, try to steer them towards getting in touc
         return response.choices[0].message.content
 
     def text_to_speech(self, text):
-        """Convert text to speech, write to a temp WAV file, and return its path"""
-        import tempfile
-
+        """Convert text to speech, write to a temp MP3 file, and return its path"""
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
             try:
                 response = self.elevenlabs.text_to_speech.convert(
@@ -245,6 +244,33 @@ If the user is engaging in discussion, try to steer them towards getting in touc
     
         return None
 
+    def text_to_video(self, text):
+        """Convert text to video, write to a temp MP4 file, and return its path"""
+        audio_path = self.text_to_speech(text)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
+            try:
+                self.pipeline(
+                    video_path=os.path.join(
+                        os.environ["TOTEM_APP_DIR"], "me/ref_video.mp4"
+                    ),
+                    audio_path=audio_path,
+                    video_out_path=tmp.name,
+                    video_mask_path=tmp.name.replace(".mp4", "_mask.mp4"),
+                    num_frames=self.unet_config.data.num_frames,
+                    num_inference_steps=20,
+                    guidance_scale=1.5,
+                    weight_dtype=self.weight_dtype,
+                    width=self.unet_config.data.resolution,
+                    height=self.unet_config.data.resolution,
+                )
+
+                return tmp.name
+
+            except Exception as e:  # pylint: disable=broad-except
+                print(f"LatentSync Error: {e}.\n", flush=True)
+
+        return None
+
 
 if __name__ == "__main__":
     me = Me()
@@ -252,15 +278,17 @@ if __name__ == "__main__":
     with gr.Blocks(title="Totem Chat + TTS") as demo:
         gr.Markdown("# Chat with Thien Mai\nPlay the last answer with my voice clone.")
 
+        video_out = gr.Video(autoplay=True)
+
         try:
-            chatbot = gr.Chatbot(type="messages")
+            chatbot = gr.Chatbot(type="messages", height=100)
         except TypeError:
-            chatbot = gr.Chatbot()
+            chatbot = gr.Chatbot(height=100)
 
         with gr.Row():
             txt = gr.Textbox(placeholder="Type your message and press Enter")
             play_btn = gr.Button("Play last answer")
-        audio_out = gr.Audio(autoplay=True, type="filepath")
+
         last_answer = gr.State("")
 
         def respond(user_message, history):
@@ -274,6 +302,6 @@ if __name__ == "__main__":
             return history, "", assistant_reply
 
         txt.submit(respond, inputs=[txt, chatbot], outputs=[chatbot, txt, last_answer])
-        play_btn.click(me.text_to_speech, inputs=[last_answer], outputs=[audio_out])
+        play_btn.click(me.text_to_video, inputs=[last_answer], outputs=[video_out])
 
     demo.launch()
