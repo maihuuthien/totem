@@ -14,7 +14,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PORT=7860
 
 # Workdir inside container
-WORKDIR /app
+WORKDIR /totem
 
 # System dependencies
 # - ffmpeg required by video/audio processing
@@ -45,9 +45,9 @@ RUN uv sync --no-dev
 COPY . .
 
 # Download required checkpoints from HuggingFace
-RUN mkdir -p checkpoints/whisper && \
-    curl -L --fail -o checkpoints/latentsync_unet.pt "https://huggingface.co/ByteDance/LatentSync/resolve/main/latentsync_unet.pt" && \
-    curl -L --fail -o checkpoints/whisper/tiny.pt "https://huggingface.co/ByteDance/LatentSync/resolve/main/whisper/tiny.pt"
+RUN mkdir -p LatentSync/checkpoints/whisper && \
+    curl -L --fail -o LatentSync/checkpoints/latentsync_unet.pt "https://huggingface.co/ByteDance/LatentSync/resolve/main/latentsync_unet.pt" && \
+    curl -L --fail -o LatentSync/checkpoints/whisper/tiny.pt "https://huggingface.co/ByteDance/LatentSync/resolve/main/whisper/tiny.pt"
 
 # Expose Gradio default port
 EXPOSE 7860
