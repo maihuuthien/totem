@@ -216,7 +216,7 @@ If the user is engaging in discussion, try to steer them towards getting in touc
             try:
                 response = self.elevenlabs.text_to_speech.convert(
                     text=text,
-                    voice_id="qmxgBbdAMUaeqxhigcfH",
+                    voice_id=os.getenv("ELEVENLABS_VOICE_ID"),
                     model_id="eleven_turbo_v2_5",
                     output_format="mp3_44100_128",
                 )
