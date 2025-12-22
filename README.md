@@ -164,7 +164,7 @@ PUSHOVER_TOKEN=your-pushover-app-token
    ```
 
 3. **Update your name in the code:**
-   - Open `app/app.py`
+   - Open `app.py`
    - Find the line `self.name = "Thien Mai"` in the `Me` class `__init__` method
    - Change it to your name:
      ```python
@@ -215,7 +215,6 @@ This setup allows your Ubuntu VM to use Ollama running on your Windows host mach
 
 3. **Run the application:**
    ```bash
-   cd app
    uv run gradio app.py
    ```
 
@@ -229,7 +228,6 @@ This setup allows your Ubuntu VM to use Ollama running on your Windows host mach
 2. Make sure `USE_LOCAL_LLM` is NOT set or is set to `0`
 3. Run the application:
    ```bash
-   cd app
    uv run gradio app.py
    ```
 
@@ -264,7 +262,6 @@ This setup allows your Ubuntu VM to use Ollama running on your Windows host mach
 
 3. **Deploy with Gradio:**
    ```bash
-   cd app
    uv run gradio deploy
    ```
 
@@ -289,7 +286,6 @@ This setup allows your Ubuntu VM to use Ollama running on your Windows host mach
 After making changes to your code or personal files:
 
 ```bash
-cd app
 uv run gradio deploy
 ```
 
@@ -299,15 +295,14 @@ Gradio will update your existing space with the new changes.
 
 ```
 totem/
-├── app/
-│   ├── app.py              # Main application file
-│   ├── README.md           # HuggingFace Space configuration
-│   ├── requirements.txt    # Dependencies for HuggingFace
-│   └── me/
-│       ├── linkedin.pdf    # Your LinkedIn profile PDF
-│       └── summary.txt     # Your personal summary
+├── app.py              # Main application file
+├── README.md           # HuggingFace Space configuration
+└── me/
+│   ├── linkedin.pdf    # Your LinkedIn profile PDF
+│   └── summary.txt     # Your personal summary
 ├── .env                    # Environment variables (create this)
 ├── pyproject.toml          # Project dependencies and metadata
+├── Dockerfile              # Docker for fast starting on HuggingFace
 ├── LICENSE                 # License file
 └── README.md               # This file
 ```
@@ -343,7 +338,6 @@ totem/
 - **Solution:** 
   - Verify you're logged in: `huggingface-cli whoami`
   - Check your internet connection
-  - Ensure `requirements.txt` is present in `app/` directory
 
 **Problem:** OpenAI API errors
 - **Solution:**
