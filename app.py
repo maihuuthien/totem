@@ -111,6 +111,13 @@ class Me:
     """Class representing myself with chat and TTS capabilities"""
 
     def __init__(self):
+        self.init_openai()
+        self.init_elevenlabs()
+        self.init_latentsync()
+        self.init_my_context()
+
+    def init_openai(self):
+        """Initialize OpenAI client"""
         print("Initializing OpenAI client...", flush=True)
         if int(os.getenv("USE_LOCAL_LLM", '0')):
             self.openai = OpenAI(
@@ -124,25 +131,13 @@ class Me:
             self.openai = OpenAI()
             self.model_name = "gpt-4o-mini"
 
+    def init_elevenlabs(self):
+        """Initialize ElevenLabs client"""
         print("Initializing ElevenLabs client...", flush=True)
         self.elevenlabs = ElevenLabs(
             api_key=os.getenv("ELEVENLABS_API_KEY"),
         )
 
-        self.init_latentsync()
-
-        print("Loading personal context from files...", flush=True)
-        self.name = "Thien Mai"
-        reader = PdfReader("me/linkedin.pdf")
-        self.linkedin = ""
-        for page in reader.pages:
-            text = page.extract_text()
-            if text:
-                self.linkedin += text
-        with open("me/summary.txt", "r", encoding="utf-8") as f:
-            self.summary = f.read()
-
-    @spaces.GPU()
     def init_latentsync(self):
         """Initialize LatentSync pipeline for text-to-video synthesis"""
 
@@ -192,6 +187,22 @@ class Me:
         #     width=self.unet_config.data.resolution//2,
         #     height=self.unet_config.data.resolution//2,
         # )
+
+    def init_my_context(self):
+        """Initialize personal context from files"""
+        print("Loading personal context from files...", flush=True)
+        self.name = "Thien Mai"
+
+        self.linkedin = ""
+        reader = PdfReader("me/linkedin.pdf")
+        for page in reader.pages:
+            text = page.extract_text()
+            if text:
+                self.linkedin += text
+
+        self.summary = ""
+        with open("me/summary.txt", "r", encoding="utf-8") as f:
+            self.summary = f.read()
 
     def handle_tool_call(self, tool_calls):
         """Handle tool calls from the assistant"""
