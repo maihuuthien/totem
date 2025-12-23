@@ -303,7 +303,7 @@ If the user is engaging in discussion, try to steer them towards getting in touc
                     unet=self.unet,
                     scheduler=self.scheduler,
                     video_path=os.path.join(
-                        os.environ["TOTEM_APP_DIR"], "me/ref_video.mp4"
+                        os.environ["TOTEM_APP_DIR"], "me/ref_video_42s.mp4"
                     ),
                     audio_path=audio_path,
                     video_out_path=tmp.name,
