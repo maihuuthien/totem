@@ -15,20 +15,17 @@
 import os
 import argparse
 from omegaconf import OmegaConf
+import spaces
 import torch
 from diffusers import AutoencoderKL, DDIMScheduler
-from latentsync.models.unet import UNet3DConditionModel
-from latentsync.pipelines.lipsync_pipeline import LipsyncPipeline
 from diffusers.utils.import_utils import is_xformers_available
 from accelerate.utils import set_seed
+from latentsync.models.unet import UNet3DConditionModel
+from latentsync.pipelines.lipsync_pipeline import LipsyncPipeline
 from latentsync.whisper.audio2feature import Audio2Feature
 
 
-def prepare_pipeline(
-    unet_config, inference_ckpt_path,
-    autoencoder_kl_model="stabilityai/sd-vae-ft-mse",
-    seed=1247,
-):
+def prepare_for_pipeline(unet_config, inference_ckpt_path):
 
     # Check if the GPU supports float16
     is_fp16_supported = torch.cuda.is_available() and torch.cuda.get_device_capability()[0] > 7
@@ -49,16 +46,6 @@ def prepare_pipeline(
     else:
         raise NotImplementedError("cross_attention_dim must be 768 or 384")
 
-    audio_encoder = Audio2Feature(
-        model_path=whisper_model_path,
-        device="cuda" if torch.cuda.is_available() else "cpu",
-        num_frames=unet_config.data.num_frames
-    )
-
-    vae = AutoencoderKL.from_pretrained(autoencoder_kl_model, torch_dtype=dtype)
-    vae.config.scaling_factor = 0.18215
-    vae.config.shift_factor = 0
-
     print(f"Loaded checkpoint path: {inference_ckpt_path}")
     unet, _ = UNet3DConditionModel.from_pretrained(
         OmegaConf.to_container(unet_config.model),
@@ -67,6 +54,33 @@ def prepare_pipeline(
     )
 
     unet = unet.to(dtype=dtype)
+    return dtype, whisper_model_path, unet, scheduler
+
+@spaces.GPU(duration=120)
+def run_pipeline(
+    audio_model_path,
+    unet_config,
+    unet,
+    scheduler,
+    video_path,
+    audio_path,
+    video_out_path,
+    num_inference_steps=20,
+    guidance_scale=1.0,
+    weight_dtype=torch.float32,
+    width=256,
+    height=256,
+    seed=1247
+):
+    audio_encoder = Audio2Feature(
+        model_path=audio_model_path,
+        device="cuda" if torch.cuda.is_available() else "cpu",
+        num_frames=unet_config.data.num_frames
+    )
+
+    vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-mse", torch_dtype=weight_dtype)
+    vae.config.scaling_factor = 0.18215
+    vae.config.shift_factor = 0
 
     # set xformers
     if is_xformers_available() and torch.cuda.is_available():
@@ -85,30 +99,42 @@ def prepare_pipeline(
         torch.seed()
 
     print(f"Initial seed: {torch.initial_seed()}")
-    return pipeline, dtype
+    print(f"Input video path: {video_path}")
+    print(f"Input audio path: {audio_path}")
+    pipeline(
+        video_path=video_path,
+        audio_path=audio_path,
+        video_out_path=video_out_path,
+        video_mask_path=video_out_path.replace(".mp4", "_mask.mp4"),
+        num_frames=unet_config.data.num_frames,
+        num_inference_steps=num_inference_steps,
+        guidance_scale=guidance_scale,
+        weight_dtype=weight_dtype,
+        width=width,
+        height=height,
+    )
 
 
 def main(args):
     unet_config = OmegaConf.load(args.unet_config_path)
-    pipeline, dtype = prepare_pipeline(
+    weight_dtype, audio_model_path, unet, scheduler = prepare_for_pipeline(
         unet_config=unet_config,
         inference_ckpt_path=args.inference_ckpt_path,
-        seed=args.seed,
     )
-
-    print(f"Input video path: {args.video_path}")
-    print(f"Input audio path: {args.audio_path}")
-    pipeline(
+    run_pipeline(
+        audio_model_path=audio_model_path,
+        unet_config=unet_config,
+        unet=unet,
+        scheduler=scheduler,
         video_path=args.video_path,
         audio_path=args.audio_path,
         video_out_path=args.video_out_path,
-        video_mask_path=args.video_out_path.replace(".mp4", "_mask.mp4"),
-        num_frames=unet_config.data.num_frames,
         num_inference_steps=args.inference_steps,
         guidance_scale=args.guidance_scale,
-        weight_dtype=dtype,
+        weight_dtype=weight_dtype,
         width=unet_config.data.resolution,
         height=unet_config.data.resolution,
+        seed=args.seed,
     )
 
 
@@ -122,6 +148,6 @@ if __name__ == "__main__":
     parser.add_argument("--inference_steps", type=int, default=20)
     parser.add_argument("--guidance_scale", type=float, default=1.0)
     parser.add_argument("--seed", type=int, default=1247)
-    args = parser.parse_args()
+    parsed_args = parser.parse_args()
 
-    main(args)
+    main(parsed_args)

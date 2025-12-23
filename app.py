@@ -15,7 +15,6 @@ import httpx
 
 from pypdf import PdfReader
 import gradio as gr
-import spaces
 
 # Monkey patch
 from huggingface_hub import hf_hub_download
@@ -33,8 +32,9 @@ sys.path.append(os.environ["LATENTSYNC_DIR"])
 os.environ["CHECKPOINTS_DIR"] = os.path.join(os.environ["LATENTSYNC_DIR"], "checkpoints/")
 os.makedirs(os.environ["CHECKPOINTS_DIR"], exist_ok=True)
 
+import spaces  # pylint: disable=wrong-import-position,unused-import
 from omegaconf import OmegaConf  # pylint: disable=wrong-import-position
-from LatentSync.scripts.inference import prepare_pipeline  # pylint: disable=wrong-import-position
+from LatentSync.scripts.inference import prepare_for_pipeline, run_pipeline  # pylint: disable=wrong-import-position
 
 
 load_dotenv(override=True)
@@ -160,9 +160,8 @@ class Me:
         self.unet_config = OmegaConf.load(os.path.join(
             os.environ["LATENTSYNC_DIR"], "configs/unet/second_stage.yaml"
         ))
-        self.pipeline, self.weight_dtype = prepare_pipeline(
-            unet_config=self.unet_config,
-            inference_ckpt_path=os.path.join(
+        self.weight_dtype, self.audio_model_path, self.unet, self.scheduler = prepare_for_pipeline(
+            unet_config=self.unet_config, inference_ckpt_path=os.path.join(
                 os.environ["LATENTSYNC_DIR"], "checkpoints/latentsync_unet.pt"
             ),
         )
@@ -171,7 +170,11 @@ class Me:
         # video_out_path = os.path.join(
         #     os.environ["TOTEM_APP_DIR"], "out_video.mp4"
         # )
-        # self.pipeline(
+        # run_pipeline(
+        #     audio_model_path=self.audio_model_path,
+        #     unet_config=self.unet_config,
+        #     unet=self.unet,
+        #     scheduler=self.scheduler,
         #     video_path=os.path.join(
         #         os.environ["TOTEM_APP_DIR"], "me/ref_video.mp4"
         #     ),
@@ -179,8 +182,6 @@ class Me:
         #         os.environ["TOTEM_APP_DIR"], "me/ref_audio.mp3"
         #     ),
         #     video_out_path=video_out_path,
-        #     video_mask_path=video_out_path.replace(".mp4", "_mask.mp4"),
-        #     num_frames=self.unet_config.data.num_frames,
         #     num_inference_steps=20//2,
         #     guidance_scale=1.5,
         #     weight_dtype=self.weight_dtype,
@@ -287,20 +288,21 @@ If the user is engaging in discussion, try to steer them towards getting in touc
 
         return None
 
-    @spaces.GPU()
     def text_to_video(self, text):
         """Convert text to video, write to a temp MP4 file, and return its path"""
         audio_path = self.text_to_speech(text)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
             try:
-                self.pipeline(
+                run_pipeline(
+                    audio_model_path=self.audio_model_path,
+                    unet_config=self.unet_config,
+                    unet=self.unet,
+                    scheduler=self.scheduler,
                     video_path=os.path.join(
                         os.environ["TOTEM_APP_DIR"], "me/ref_video.mp4"
                     ),
                     audio_path=audio_path,
                     video_out_path=tmp.name,
-                    video_mask_path=tmp.name.replace(".mp4", "_mask.mp4"),
-                    num_frames=self.unet_config.data.num_frames,
                     num_inference_steps=20,
                     guidance_scale=1.5,
                     weight_dtype=self.weight_dtype,
