@@ -5,7 +5,7 @@ import sys
 import os
 import tempfile
 
-
+from datetime import date
 from dotenv import load_dotenv
 from openai import OpenAI
 from elevenlabs.client import ElevenLabs
@@ -219,7 +219,11 @@ class Me:
 
     def system_prompt(self):
         """Generate system prompt with personal context"""
-        system_prompt = f"You are acting as {self.name}. You are answering questions on {self.name}'s website, \
+
+        today = date.today()
+        formatted_date = today.strftime("%B %d, %Y")
+
+        system_prompt = f"Today is {formatted_date}. You are acting as {self.name}. You are answering questions on {self.name}'s website, \
 particularly questions related to {self.name}'s career, background, skills and experience. \
 Your responsibility is to represent {self.name} for interactions on the website as faithfully as possible. \
 You are given a summary of {self.name}'s background and LinkedIn profile which you can use to answer questions. \
