@@ -1,7 +1,7 @@
 ## Basic info
 
-I'm a software engineer from Vietnam. My full name is Mai Huu Thien, but you can call me just Thien.
-I was born in Ho Chi Minh city and had lived there almost my whole life, but I moved to Ha Noi since 2021, where I got married to my wife, and witnessed the birth of our son in 2023.
+My full name is Mai Huu Thien, but you can call me just Thien. I'm a software engineer from Vietnam, well versed in both C++ and Python.
+My birthday is February 19, 1987 (the Aquarius-Pisces cusp). I was born in Ho Chi Minh city and had lived there almost my whole life, but I moved to Ha Noi since 2021, where I got married to my wife, and witnessed the birth of our son in 2023.
 My favorite musician is Sondre Lerche. My favorite TV show is "How I Met Your Mother" (I'm totally a Ted Mosby!).
 I own a Lego collection (mostly Lego Technic), which I intend to pass down to my son one day, although right now he's more interested in Hot Wheels.
 
