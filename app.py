@@ -326,7 +326,7 @@ if __name__ == "__main__":
     me = Me()
 
     with gr.Blocks(title="Totem Chat + TTS") as demo:
-        gr.Markdown("# Chat with Thien Mai\nPlay the last answer with my voice clone.")
+        gr.Markdown("# Chat with Thien Mai\nPlease log in HuggingFace to play the last answer with my avatar and voice clone.")
 
         video_out = gr.Video(autoplay=True)
 
