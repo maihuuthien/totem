@@ -48,6 +48,10 @@ def trim_video_to_audio_length(video_path: str, audio_path: str):
     except Exception as e:  # pylint: disable=broad-except
         print(f"Could not read MP3 duration: {e}", flush=True)
         return None
+    
+    if 0 < (max_video_length := int(os.getenv("MAX_VIDEO_LENGTH", "0"))):
+        audio_duration = min(audio_duration, max_video_length)
+        print(f"Capping audio duration to MAX_VIDEO_LENGTH: {audio_duration:.2f}s", flush=True)
 
     try:
         # Load the video file
@@ -131,7 +135,7 @@ def prepare_for_pipeline(unet_config, inference_ckpt_path):
     unet = unet.to(dtype=dtype)
     return dtype, whisper_model_path, unet, scheduler
 
-@spaces.GPU(duration=120)
+@spaces.GPU(duration=180)
 def run_pipeline(
     audio_model_path,
     unet_config,
