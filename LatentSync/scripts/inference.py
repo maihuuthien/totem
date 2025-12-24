@@ -48,7 +48,7 @@ def trim_video_to_audio_length(video_path: str, audio_path: str):
     except Exception as e:  # pylint: disable=broad-except
         print(f"Could not read MP3 duration: {e}", flush=True)
         return None
-    
+
     if 0 < (max_video_length := int(os.getenv("MAX_VIDEO_LENGTH", "0"))):
         audio_duration = min(audio_duration, max_video_length)
         print(f"Capping audio duration to MAX_VIDEO_LENGTH: {audio_duration:.2f}s", flush=True)
@@ -56,22 +56,21 @@ def trim_video_to_audio_length(video_path: str, audio_path: str):
     try:
         # Load the video file
         clip = VideoFileClip(video_path)
-
-        # Compute randomized start/end to match audio_duration while staying within video bounds
         video_duration = float(clip.duration)
-        if audio_duration <= video_duration:
-            max_start = max(0.0, video_duration - audio_duration)
-            start_time_seconds = random.uniform(0.0, max_start)
-            end_time_seconds = start_time_seconds + audio_duration
-        else:
+        if video_duration < audio_duration:
             # Audio is longer than video; fall back to full video duration
             print(
                 f"Audio ({audio_duration:.2f}s) is longer than video ({video_duration:.2f}s); "
                 "using full video length.",
                 flush=True,
             )
-            start_time_seconds = 0.0
-            end_time_seconds = video_duration
+            clip.close()  # Always close the clip when done
+            return video_path
+
+        # Compute randomized start/end to match audio_duration while staying within video bounds
+        max_start = max(0.0, video_duration - audio_duration)
+        start_time_seconds = random.uniform(0.0, max_start)
+        end_time_seconds = start_time_seconds + audio_duration
 
         # Safety clamp: never exceed the clip duration
         end_time_seconds = min(end_time_seconds, video_duration)
