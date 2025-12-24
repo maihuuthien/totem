@@ -134,7 +134,7 @@ def prepare_for_pipeline(unet_config, inference_ckpt_path):
     unet = unet.to(dtype=dtype)
     return dtype, whisper_model_path, unet, scheduler
 
-@spaces.GPU(duration=180)
+@spaces.GPU(duration=int(os.getenv("SPACES_GPU_TIMEOUT", "120")))
 def run_pipeline(
     audio_model_path,
     unet_config,
