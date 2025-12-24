@@ -167,20 +167,14 @@ class Me:
         )
 
         # # NOTE: For testing purpose only
-        # video_out_path = os.path.join(
-        #     os.environ["TOTEM_APP_DIR"], "out_video.mp4"
-        # )
+        # video_out_path = os.path.join(os.environ["TOTEM_APP_DIR"], "out_video.mp4")
         # run_pipeline(
         #     audio_model_path=self.audio_model_path,
         #     unet_config=self.unet_config,
         #     unet=self.unet,
         #     scheduler=self.scheduler,
-        #     video_path=os.path.join(
-        #         os.environ["TOTEM_APP_DIR"], "me/ref_video.mp4"
-        #     ),
-        #     audio_path=os.path.join(
-        #         os.environ["TOTEM_APP_DIR"], "me/ref_audio.mp3"
-        #     ),
+        #     video_path=os.path.join(os.environ["TOTEM_APP_DIR"], "me/ref_video.mp4"),
+        #     audio_path=os.path.join(os.environ["TOTEM_APP_DIR"], "me/ref_audio.mp3"),
         #     video_out_path=video_out_path,
         #     num_inference_steps=20//2,
         #     guidance_scale=1.5,
@@ -296,7 +290,7 @@ If the user is engaging in discussion, try to steer them towards getting in touc
     def text_to_video(self, text):
         """Convert text to video, write to a temp MP4 file, and return its path"""
         audio_path = self.text_to_speech(text)
-        if not audio_path or not os.path.exists(audio_path):
+        if not (audio_path and os.path.exists(audio_path)):
             return None
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
@@ -307,7 +301,7 @@ If the user is engaging in discussion, try to steer them towards getting in touc
                     unet=self.unet,
                     scheduler=self.scheduler,
                     video_path=os.path.join(
-                        os.environ["TOTEM_APP_DIR"], f"me/ref_video.mp4"
+                        os.environ["TOTEM_APP_DIR"], "me/ref_video.mp4"
                     ),
                     audio_path=audio_path,
                     video_out_path=tmp.name,
