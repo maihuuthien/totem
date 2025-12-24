@@ -8,11 +8,12 @@ python_version: 3.10.13
 
 # Totem
 
-A proxy chatbot to answer professional and personal questions about yourself using AI. This application creates an interactive chat interface powered by OpenAI (or local LLM) that can answer questions about your background, career, and experience based on your LinkedIn profile and personal summary. See demo [here](https://huggingface.co/spaces/maihuuthien/totem).
+A proxy chatbot to answer professional and personal questions about yourself using AI. This application creates an interactive chat interface powered by OpenAI (or local LLM) that can answer questions about your background, career, and experience based on your LinkedIn profile and personal summary. On top of that, user can also *see* and *hear* you speaking out loud the answer. See demo [here](https://huggingface.co/spaces/maihuuthien/totem).
 
 ## Features
 
 - 🤖 AI-powered chat interface using GPT-4o-mini or local Ollama models
+- 🙋‍♂️ Play the last answer with your talking avatar
 - 📄 Automatically ingests your LinkedIn profile (PDF) and personal summary
 - 📧 Collects interested visitor contact information
 - 📱 Push notifications via Pushover for new contacts and unknown questions
@@ -118,7 +119,7 @@ uv sync
 
 This command will:
 - Create a virtual environment (`.venv`)
-- Install Python 3.12+ if needed
+- Install Python 3.10.13 if needed
 - Install all dependencies from `pyproject.toml`
 
 ### Step 6: Create Environment File
@@ -135,6 +136,10 @@ Open `.env` in your editor and add your configuration:
 # Required for deployment (HuggingFace with OpenAI)
 OPENAI_API_KEY=sk-proj-your-openai-api-key-here
 
+# Optional: ElevenLabs for text-to-speech
+ELEVENLABS_API_KEY=sk_your-elevenlabs-api-key-here
+ELEVENLABS_VOICE_ID=your-voice-id
+
 # Optional: Pushover notifications
 PUSHOVER_USER=your-pushover-user-key
 PUSHOVER_TOKEN=your-pushover-app-token
@@ -146,6 +151,7 @@ PUSHOVER_TOKEN=your-pushover-app-token
 
 **Where to get keys:**
 - **OpenAI API Key**: Sign up at [platform.openai.com](https://platform.openai.com/), go to API Keys section
+- **ElevenLabs API Key**: Sign up at [elevenlabs.io](https://elevenlabs.io/), go to Developers, then API Keys tab
 - **Pushover Keys**: Create account at [pushover.net](https://pushover.net/), create an application to get token
 
 ### Step 7: Personalize Your Chatbot
@@ -171,6 +177,14 @@ PUSHOVER_TOKEN=your-pushover-app-token
      ```python
      self.name = "Your Full Name"
      ```
+
+4. **Update your voice clone:**
+   - I'm using [ElevenLabs](https://elevenlabs.io/voice-cloning). If yours is another provider, you'll need to update the code accordingly.
+   - Otherwise, you can simply add your `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID` environment variables.
+
+5. **Update your talking head:**
+   - Replace `me/ref_video.mp4` with another video of yourself talking
+   - The reference video should be long enough to cover most generated speeches (preferably 30-50 seconds)
 
 ## Running Locally
 
@@ -296,14 +310,17 @@ Gradio will update your existing space with the new changes.
 
 ```
 totem/
+├── LatentSync/         # Lip-syncing package (inference only)
 ├── app.py              # Main application file
 ├── README.md           # HuggingFace Space configuration
 └── me/
 │   ├── linkedin.pdf    # Your LinkedIn profile PDF
 │   └── summary.txt     # Your personal summary
+│   └── ref_video.mp4   # Your talking head as reference
 ├── .env                    # Environment variables (create this)
 ├── pyproject.toml          # Project dependencies and metadata
-├── Dockerfile              # Docker for fast starting on HuggingFace
+├── requirements.txt        # Pip package dependencies as alternative
+├── Dockerfile              # Docker for fast startup on HuggingFace
 ├── LICENSE                 # License file
 └── README.md               # This file
 ```
