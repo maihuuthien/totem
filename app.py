@@ -340,8 +340,10 @@ if __name__ == "__main__":
             chatbot = gr.Chatbot(height=100)
 
         with gr.Row():
-            txt = gr.Textbox(placeholder="Type your message and press Enter")
-            play_btn = gr.Button("Play last answer")
+            play_btn = gr.Button("Play last answer", scale=1)
+            txt = gr.Textbox(
+                label="Your question", placeholder="Type your message and press Enter", scale=2
+            )
 
         last_answer = gr.State("")
 
