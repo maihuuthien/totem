@@ -15,7 +15,6 @@ import httpx
 
 from pypdf import PdfReader
 import gradio as gr
-from mutagen.mp3 import MP3
 
 # Monkey patch
 from huggingface_hub import hf_hub_download
@@ -39,15 +38,6 @@ from LatentSync.scripts.inference import prepare_for_pipeline, run_pipeline  # p
 
 
 load_dotenv(override=True)
-
-def get_mp3_duration_seconds(path: str) -> float:
-    """Return the duration of an MP3 file in seconds using header metadata.
-
-    Efficient: reads MP3 metadata (no audio decoding). Raises FileNotFoundError
-    if the file does not exist; may raise mutagen errors for invalid files.
-    """
-    audio = MP3(path)
-    return float(audio.info.length)
 
 def push(text):
     """Send a push notification using Pushover"""
@@ -186,7 +176,7 @@ class Me:
         #     unet=self.unet,
         #     scheduler=self.scheduler,
         #     video_path=os.path.join(
-        #         os.environ["TOTEM_APP_DIR"], "me/ref_video_8s.mp4"
+        #         os.environ["TOTEM_APP_DIR"], "me/ref_video.mp4"
         #     ),
         #     audio_path=os.path.join(
         #         os.environ["TOTEM_APP_DIR"], "me/ref_audio.mp3"
@@ -215,9 +205,6 @@ class Me:
         self.summary = ""
         with open("me/summary.txt", "r", encoding="utf-8") as f:
             self.summary = f.read()
-
-        # TODO: Dynamically adjust available video durations based on reference videos present
-        self.available_video_durations = [8, 17, 26]  # seconds
 
     def handle_tool_call(self, tool_calls):
         """Handle tool calls from the assistant"""
@@ -312,19 +299,6 @@ If the user is engaging in discussion, try to steer them towards getting in touc
         if not audio_path or not os.path.exists(audio_path):
             return None
 
-        # Log audio duration for downstream decisions/monitoring
-        try:
-            audio_duration = get_mp3_duration_seconds(audio_path)
-            print(f"Generated MP3 duration: {audio_duration:.2f}s", flush=True)
-        except Exception as e:  # pylint: disable=broad-except
-            print(f"Could not read MP3 duration: {e}", flush=True)
-
-        selected_video_duration = min(
-            self.available_video_durations,
-            key=lambda x: abs(x - audio_duration)
-        )
-        print(f"Selected video duration: {selected_video_duration}s", flush=True)
-
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
             try:
                 run_pipeline(
@@ -333,7 +307,7 @@ If the user is engaging in discussion, try to steer them towards getting in touc
                     unet=self.unet,
                     scheduler=self.scheduler,
                     video_path=os.path.join(
-                        os.environ["TOTEM_APP_DIR"], f"me/ref_video_{selected_video_duration}s.mp4"
+                        os.environ["TOTEM_APP_DIR"], f"me/ref_video.mp4"
                     ),
                     audio_path=audio_path,
                     video_out_path=tmp.name,

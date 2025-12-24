@@ -25,7 +25,82 @@ from latentsync.pipelines.lipsync_pipeline import LipsyncPipeline
 from latentsync.whisper.audio2feature import Audio2Feature
 
 
+def get_mp3_duration_seconds(path: str) -> float:
+    """Return the duration of an MP3 file in seconds using header metadata.
+
+    Efficient: reads MP3 metadata (no audio decoding). Raises FileNotFoundError
+    if the file does not exist; may raise mutagen errors for invalid files.
+    """
+    from mutagen.mp3 import MP3
+
+    audio = MP3(path)
+    return float(audio.info.length)
+
+def trim_video_to_audio_length(video_path: str, audio_path: str):
+    """Trim the video to match the length of the audio."""
+    from moviepy import VideoFileClip
+    import tempfile
+    import random
+
+    try:
+        audio_duration = get_mp3_duration_seconds(audio_path)
+        print(f"Generated MP3 duration: {audio_duration:.2f}s", flush=True)
+    except Exception as e:  # pylint: disable=broad-except
+        print(f"Could not read MP3 duration: {e}", flush=True)
+        return None
+
+    try:
+        # Load the video file
+        clip = VideoFileClip(video_path)
+
+        # Compute randomized start/end to match audio_duration while staying within video bounds
+        video_duration = float(clip.duration)
+        if audio_duration <= video_duration:
+            max_start = max(0.0, video_duration - audio_duration)
+            start_time_seconds = random.uniform(0.0, max_start)
+            end_time_seconds = start_time_seconds + audio_duration
+        else:
+            # Audio is longer than video; fall back to full video duration
+            print(
+                f"Audio ({audio_duration:.2f}s) is longer than video ({video_duration:.2f}s); "
+                "using full video length.",
+                flush=True,
+            )
+            start_time_seconds = 0.0
+            end_time_seconds = video_duration
+
+        # Safety clamp: never exceed the clip duration
+        end_time_seconds = min(end_time_seconds, video_duration)
+
+        print(
+            f"Trimming from {start_time_seconds:.2f}s to {end_time_seconds:.2f}s "
+            f"(target audio length: {audio_duration:.2f}s)",
+            flush=True,
+        )
+
+        # Cut the subclip
+        trimmed_clip = clip.subclipped(start_time_seconds, end_time_seconds)
+
+        # Write the result to a new file
+        # Using 'libx264' codec and 'aac' audio codec for compatibility with MP4
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
+            trimmed_clip.write_videofile(
+                tmp.name,
+                codec="libx264",
+                audio_codec="aac"
+            )
+
+            clip.close()  # Always close the clip when done
+            print(f"Video successfully trimmed and saved to {tmp.name}", flush=True)
+            return tmp.name
+
+    except Exception as e:  # pylint: disable=broad-except
+        print(f"An error occurred: {e}", flush=True)
+
+    return None
+
 def prepare_for_pipeline(unet_config, inference_ckpt_path):
+    """Prepare models and scheduler for the lip-sync pipeline."""
 
     # Check if the GPU supports float16
     is_fp16_supported = torch.cuda.is_available() and torch.cuda.get_device_capability()[0] > 7
@@ -72,6 +147,7 @@ def run_pipeline(
     height=256,
     seed=1247
 ):
+    """Run the lip-sync pipeline."""
     audio_encoder = Audio2Feature(
         model_path=audio_model_path,
         device="cuda" if torch.cuda.is_available() else "cpu",
@@ -101,8 +177,12 @@ def run_pipeline(
     print(f"Initial seed: {torch.initial_seed()}")
     print(f"Input video path: {video_path}")
     print(f"Input audio path: {audio_path}")
+
+    trimmed_video_path = trim_video_to_audio_length(video_path, audio_path)
+    print(f"Trimmed video path: {trimmed_video_path}")
+
     pipeline(
-        video_path=video_path,
+        video_path=trimmed_video_path,
         audio_path=audio_path,
         video_out_path=video_out_path,
         video_mask_path=video_out_path.replace(".mp4", "_mask.mp4"),

@@ -5,7 +5,6 @@ description = "A proxy chatbot to answer professional and personal questions abo
 readme = "README.md"
 requires-python = "==3.10.13"
 dependencies = [
-    "mutagen==1.47.0",
     "accelerate==0.26.1",
     "decord==0.6.0",
     "diffusers==0.11.1",
@@ -41,6 +40,8 @@ dependencies = [
     "transformers==4.38.0",
     "xformers==0.0.25",
     "spaces>=0.26.0",
+    "mutagen==1.47.0",
+    "moviepy>=2.2.1",
 ]
 
 [dependency-groups]
