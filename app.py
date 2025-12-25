@@ -1,4 +1,4 @@
-"""Main application code for the Totem Chat + TTS app"""
+"""Main application code for the Totem Chat app"""
 
 import json
 import sys
@@ -108,7 +108,7 @@ tools = [{"type": "function", "function": record_user_details_json},
 
 
 class Me:
-    """Class representing myself with chat and TTS capabilities"""
+    """Class representing myself"""
 
     def __init__(self):
         self.init_openai()
@@ -209,7 +209,11 @@ class Me:
             print(f"Tool called: {tool_name}", flush=True)
             tool = globals().get(tool_name)
             result = tool(**arguments) if tool else {}
-            results.append({"role": "tool","content": json.dumps(result),"tool_call_id": tool_call.id})
+            results.append({
+                "role": "tool",
+                "content": json.dumps(result),
+                "tool_call_id": tool_call.id,
+            })
         return results
 
     def system_prompt(self):
@@ -300,9 +304,7 @@ If the user is engaging in discussion, try to steer them towards getting in touc
                     unet_config=self.unet_config,
                     unet=self.unet,
                     scheduler=self.scheduler,
-                    video_path=os.path.join(
-                        os.environ["TOTEM_APP_DIR"], "me/ref_video.mp4"
-                    ),
+                    video_path=os.path.join(os.environ["TOTEM_APP_DIR"], "me/ref_video.mp4"),
                     audio_path=audio_path,
                     video_out_path=tmp.name,
                     num_inference_steps=20,
@@ -323,8 +325,9 @@ If the user is engaging in discussion, try to steer them towards getting in touc
 if __name__ == "__main__":
     me = Me()
 
-    with gr.Blocks(title="Totem Chat + TTS") as demo:
-        gr.Markdown("# Chat with Thien Mai\nPlease log in HuggingFace to play the last answer with my avatar and voice clone.")
+    with gr.Blocks(title="Totem Chat") as demo:
+        INSTRUCTIONS = "Please log in HuggingFace to play the last answer with my avatar and voice clone."
+        gr.Markdown(f"# Chat with Thien Mai\n{INSTRUCTIONS}")
 
         video_out = gr.Video(autoplay=True)
 
