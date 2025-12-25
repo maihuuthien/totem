@@ -184,7 +184,8 @@ PUSHOVER_TOKEN=your-pushover-app-token
 
 5. **Update your talking head:**
    - Replace `me/ref_video.mp4` with another video of yourself talking
-   - The reference video should be long enough to cover most generated speeches (preferably 30-50 seconds)
+   - The reference video should be long enough to cover most generated speeches (preferably 30-50 seconds), or
+   - For even more fun, you can put in many reference videos with name pattern `ref_video_{video-length-in-seconds}s.mp4`, the code will automatically choose one that can cover the generated speech.
 
 ## Running Locally
 
