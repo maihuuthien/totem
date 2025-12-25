@@ -25,59 +25,41 @@ from latentsync.pipelines.lipsync_pipeline import LipsyncPipeline
 from latentsync.whisper.audio2feature import Audio2Feature
 
 
-def get_mp3_duration_seconds(path: str) -> float:
-    """Return the duration of an MP3 file in seconds using header metadata.
-
-    Efficient: reads MP3 metadata (no audio decoding). Raises FileNotFoundError
-    if the file does not exist; may raise mutagen errors for invalid files.
-    """
-    from mutagen.mp3 import MP3
-
-    audio = MP3(path)
-    return float(audio.info.length)
-
-def trim_video_to_audio_length(video_path: str, audio_path: str):
+def trim_video_to_audio_length(video_path: str, audio_length: float):
     """Trim the video to match the length of the audio."""
     from moviepy import VideoFileClip
     import tempfile
     import random
 
-    try:
-        audio_duration = get_mp3_duration_seconds(audio_path)
-        print(f"Generated MP3 duration: {audio_duration:.2f}s", flush=True)
-    except Exception as e:  # pylint: disable=broad-except
-        print(f"Could not read MP3 duration: {e}", flush=True)
-        return None
-
     if 0 < (max_video_length := int(os.getenv("MAX_VIDEO_LENGTH", "0"))):
-        audio_duration = min(audio_duration, max_video_length)
-        print(f"Capping audio duration to MAX_VIDEO_LENGTH: {audio_duration:.2f}s", flush=True)
+        audio_length = min(audio_length, max_video_length)
+        print(f"Capping audio duration to MAX_VIDEO_LENGTH: {audio_length:.2f}s", flush=True)
 
     try:
         # Load the video file
         clip = VideoFileClip(video_path)
         video_duration = float(clip.duration)
-        if video_duration < audio_duration:
+        if video_duration < audio_length:
             # Audio is longer than video; fall back to full video duration
             print(
-                f"Audio ({audio_duration:.2f}s) is longer than video ({video_duration:.2f}s); "
+                f"Audio ({audio_length:.2f}s) is longer than video ({video_duration:.2f}s); "
                 "using full video length.",
                 flush=True,
             )
             clip.close()  # Always close the clip when done
             return video_path
 
-        # Compute randomized start/end to match audio_duration while staying within video bounds
-        max_start = max(0.0, video_duration - audio_duration)
+        # Compute randomized start/end to match audio_length while staying within video bounds
+        max_start = max(0.0, video_duration - audio_length)
         start_time_seconds = random.uniform(0.0, max_start)
-        end_time_seconds = start_time_seconds + audio_duration
+        end_time_seconds = start_time_seconds + audio_length
 
         # Safety clamp: never exceed the clip duration
         end_time_seconds = min(end_time_seconds, video_duration)
 
         print(
             f"Trimming from {start_time_seconds:.2f}s to {end_time_seconds:.2f}s "
-            f"(target audio length: {audio_duration:.2f}s)",
+            f"(target audio length: {audio_length:.2f}s)",
             flush=True,
         )
 
@@ -142,6 +124,7 @@ def run_pipeline(
     scheduler,
     video_path,
     audio_path,
+    audio_length,
     video_out_path,
     num_inference_steps=20,
     guidance_scale=1.0,
@@ -181,7 +164,9 @@ def run_pipeline(
     print(f"Input video path: {video_path}")
     print(f"Input audio path: {audio_path}")
 
-    trimmed_video_path = trim_video_to_audio_length(video_path, audio_path)
+    trimmed_video_path = trim_video_to_audio_length(
+        video_path, audio_length
+    ) if audio_length else video_path
     print(f"Trimmed video path: {trimmed_video_path}")
 
     pipeline(
@@ -211,6 +196,7 @@ def main(args):
         scheduler=scheduler,
         video_path=args.video_path,
         audio_path=args.audio_path,
+        audio_length=None,
         video_out_path=args.video_out_path,
         num_inference_steps=args.inference_steps,
         guidance_scale=args.guidance_scale,

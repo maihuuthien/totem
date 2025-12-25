@@ -3,6 +3,7 @@
 import json
 import sys
 import os
+import re
 import tempfile
 
 from datetime import date
@@ -38,6 +39,17 @@ from LatentSync.scripts.inference import prepare_for_pipeline, run_pipeline  # p
 
 
 load_dotenv(override=True)
+
+def get_mp3_duration_seconds(path: str) -> float:
+    """Return the duration of an MP3 file in seconds using header metadata.
+
+    Efficient: reads MP3 metadata (no audio decoding). Raises FileNotFoundError
+    if the file does not exist; may raise mutagen errors for invalid files.
+    """
+    from mutagen.mp3 import MP3
+
+    audio = MP3(path)
+    return float(audio.info.length)
 
 def push(text):
     """Send a push notification using Pushover"""
@@ -200,6 +212,22 @@ class Me:
         with open("me/summary.txt", "r", encoding="utf-8") as f:
             self.summary = f.read()
 
+        self.available_video_lengths = []
+
+        # Collect available reference video lengths from filenames
+        me_dir = os.path.join(os.environ["TOTEM_APP_DIR"], "me")
+        pattern = re.compile(r"^ref_video_(\d+)s\.mp4$")
+        for fname in os.listdir(me_dir):
+            match = pattern.match(fname)
+            if not match:
+                continue
+
+            seconds = int(match.group(1))
+            self.available_video_lengths.append(seconds)
+
+        # Deduplicate and sort for predictable ordering
+        self.available_video_lengths = sorted(set(self.available_video_lengths))
+
     def handle_tool_call(self, tool_calls):
         """Handle tool calls from the assistant"""
         results = []
@@ -297,6 +325,21 @@ If the user is engaging in discussion, try to steer them towards getting in touc
         if not (audio_path and os.path.exists(audio_path)):
             return None
 
+        try:
+            audio_duration = get_mp3_duration_seconds(audio_path)
+            print(f"Generated MP3 duration: {audio_duration:.2f}s", flush=True)
+        except Exception as e:  # pylint: disable=broad-except
+            print(f"Could not read MP3 duration: {e}", flush=True)
+            return None
+
+        nearest_video_length = next(
+            (length for length in self.available_video_lengths if length > audio_duration),
+            self.available_video_lengths[-1] if self.available_video_lengths else None,
+        )
+        video_length_suffix = f"_{nearest_video_length}s" if nearest_video_length else ""
+        video_path = os.path.join(os.environ["TOTEM_APP_DIR"], f"me/ref_video{video_length_suffix}.mp4")
+        print(f"Selected reference video path: {video_path}", flush=True)
+
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
             try:
                 run_pipeline(
@@ -304,8 +347,9 @@ If the user is engaging in discussion, try to steer them towards getting in touc
                     unet_config=self.unet_config,
                     unet=self.unet,
                     scheduler=self.scheduler,
-                    video_path=os.path.join(os.environ["TOTEM_APP_DIR"], "me/ref_video.mp4"),
+                    video_path=video_path,
                     audio_path=audio_path,
+                    audio_length=audio_duration,
                     video_out_path=tmp.name,
                     num_inference_steps=20,
                     guidance_scale=1.5,
