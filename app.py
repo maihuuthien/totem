@@ -331,7 +331,8 @@ If the user is engaging in discussion, try to steer them towards getting in touc
         except Exception as e:  # pylint: disable=broad-except
             print(f"Could not read MP3 duration: {e}", flush=True)
             return None
-
+        
+        audio_duration += 1  # Add buffer to avoid cutting off
         nearest_video_length = next(
             (length for length in self.available_video_lengths if length > audio_duration),
             self.available_video_lengths[-1] if self.available_video_lengths else None,
