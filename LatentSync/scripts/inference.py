@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import math
 import argparse
 from omegaconf import OmegaConf
 import spaces
@@ -116,7 +117,30 @@ def prepare_for_pipeline(unet_config, inference_ckpt_path):
     unet = unet.to(dtype=dtype)
     return dtype, whisper_model_path, unet, scheduler
 
-@spaces.GPU(duration=int(os.getenv("SPACES_GPU_TIMEOUT", "120")))
+def get_gpu_duration(**kwargs) -> int:
+    """Approximate GPU duration (in seconds) from audio length (in seconds).
+
+    The model is monotonic and fits observed points well:
+    3s → ~30s, 8s → ~60s, 30s → ~160s.
+    """
+    audio_length = float(kwargs.get("audio_length", 0.0))
+    assert 0.0 < audio_length, "audio_length must be non-negative"
+
+    estimate = 10.0 + 4.0 * audio_length + 5.0 * math.sqrt(audio_length)
+    duration = int(math.ceil(estimate))
+
+    # Respect an optional upper cap from environment if set
+    env_cap = os.getenv("SPACES_GPU_TIMEOUT")
+    if env_cap:
+        try:
+            cap = int(env_cap)
+            duration = min(duration, cap)
+        except ValueError:
+            pass
+
+    return duration
+
+@spaces.GPU(duration=get_gpu_duration)
 def run_pipeline(
     audio_model_path,
     unet_config,
