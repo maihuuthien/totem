@@ -228,6 +228,9 @@ class Me:
         # Deduplicate and sort for predictable ordering
         self.available_video_lengths = sorted(set(self.available_video_lengths))
 
+        # First-time video inference needs some time to "warm up"
+        self.cold_start = 10.0  # seconds
+
     def handle_tool_call(self, tool_calls):
         """Handle tool calls from the assistant"""
         results = []
@@ -331,7 +334,7 @@ If the user is engaging in discussion, try to steer them towards getting in touc
         except Exception as e:  # pylint: disable=broad-except
             print(f"Could not read MP3 duration: {e}", flush=True)
             return None
-        
+
         audio_duration += 1  # Add buffer to avoid cutting off
         nearest_video_length = next(
             (length for length in self.available_video_lengths if length > audio_duration),
@@ -357,7 +360,11 @@ If the user is engaging in discussion, try to steer them towards getting in touc
                     weight_dtype=self.weight_dtype,
                     width=self.unet_config.data.resolution,
                     height=self.unet_config.data.resolution,
+                    cold_start=self.cold_start,
                 )
+
+                # Only apply cold start delay once
+                self.cold_start = 0.0  # pylint: disable=attribute-defined-outside-init
 
                 return tmp.name
 

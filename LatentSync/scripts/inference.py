@@ -124,10 +124,14 @@ def get_gpu_duration(**kwargs) -> int:
     3s → ~30s, 8s → ~60s, 30s → ~160s.
     """
     audio_length = float(kwargs.get("audio_length", 0.0))
-    assert 0.0 < audio_length, "audio_length must be non-negative"
+    assert 0.0 < audio_length, "audio_length must be positive"
 
     estimate = 10.0 + 4.0 * audio_length + 5.0 * math.sqrt(audio_length)
     duration = int(math.ceil(estimate))
+
+    cold_start = float(kwargs.get("cold_start", 0.0))
+    if 0.0 < cold_start:
+        duration += int(math.ceil(cold_start))
 
     # Respect an optional upper cap from environment if set
     env_cap = os.getenv("SPACES_GPU_TIMEOUT")
@@ -155,7 +159,8 @@ def run_pipeline(
     weight_dtype=torch.float32,
     width=256,
     height=256,
-    seed=1247
+    seed=1247,
+    cold_start=0.0,
 ):
     """Run the lip-sync pipeline."""
     audio_encoder = Audio2Feature(
